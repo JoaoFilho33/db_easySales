@@ -1,5 +1,3 @@
---CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 CREATE TABLE Cliente (
   	id_cli          SERIAL NOT NULL PRIMARY KEY,
   	nome_cli        VARCHAR(40) NOT NULL,
@@ -9,7 +7,8 @@ CREATE TABLE Cliente (
   	logradouro_cli  VARCHAR(25) NOT NULL,
   	cep_cli         VARCHAR(11) NOT NULL,
   	cidade_cli      VARCHAR(20) NOT NULL,
-	email_cli		VARCHAR(25)
+	email_cli		VARCHAR(25),
+	telefone		VARCHAR(12) NOT NULL
 );
 
 CREATE TABLE Fornecedor (
@@ -22,7 +21,8 @@ CREATE TABLE Fornecedor (
   	cidade_fn         VARCHAR(20) NOT NULL,
 	telefone_fn		  VARCHAR(15) NOT NULL,
 	cpf_fn			  VARCHAR(15) NOT NULL,
-	email_fn		  VARCHAR(25)
+	email_fn		  VARCHAR(25),
+	telefone 		  VARCHAR(12) NOT NULL
 );
 
 CREATE TABLE Compra (
@@ -54,7 +54,6 @@ CREATE TABLE Venda (
 CREATE TABLE ItemVenda (
 	vendaId                INT NOT NULL REFERENCES Venda(id_venda),
   	estoqueId              INT NOT NULL REFERENCES Estoque(id_estoque),
-	preco_item_v		   REAL NOT NULL REFERENCES Estoque(preco_prod),
 	qtd_vendida		   	   INT NOT NULL,
 	valor_total_item_v     REAL NOT NULL,
   	CONSTRAINT PRI_ITEM_VENDA PRIMARY KEY (estoqueId, vendaId)
@@ -62,8 +61,8 @@ CREATE TABLE ItemVenda (
 
 CREATE TABLE Empresa (
   	id_emp           SERIAL NOT NULL PRIMARY KEY,
-  	nome_emp         VARCHAR NOT NULL,
-  	email_emp        VARCHAR NOT NULL, --CRIAR VIEW DE CADA EMPRESA PARA SEU PROPRIO BD
+  	nome_emp         VARCHAR(15) NOT NULL,
+  	email_emp        VARCHAR(25) NOT NULL, --CRIAR VIEW DE CADA EMPRESA PARA SEU PROPRIO BD
   	senha_emp        VARCHAR(8) NOT NULL
 );
 
@@ -71,7 +70,7 @@ CREATE TABLE Estoque (
  	id_estoque        SERIAL NOT NULL PRIMARY KEY,
 	empId             INT NOT NULL REFERENCES Empresa(id_emp) ON DELETE CASCADE,
   	prodId            INT NOT NULL REFERENCES Produto(id_prod) ON DELETE CASCADE,
-	preco_produto	  REAL NOT NULL, --preço de venda do produto
+	preco_prod	      REAL NOT NULL, --preço de venda do produto
 	quant_estq		  INT NOT NULL
 );
 
