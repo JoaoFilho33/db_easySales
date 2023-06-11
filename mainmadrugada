@@ -43,11 +43,12 @@ CREATE TABLE ItemCompra (
 
 CREATE TABLE Venda (
   	id_venda               SERIAL NOT NULL PRIMARY KEY,
-  	cli_venda_id           INT NOT NULL REFERENCES Cliente(id_cli),
+  	id_cli                 INT NOT NULL REFERENCES Cliente(id_cli),
   	valor_total_venda      REAL NOT NULL,
-  	dt_venda		       TIMESTAMPTZ NOT NULL,
+  	dt_venda	       	   TIMESTAMPTZ NOT NULL,
 	qtd_itens			   INT NOT NULL,
-  	qtd_parcelas	       INT NOT NULL
+  	qtd_parcelas_total	   INT NOT NULL,
+  	qtd_parcelas_falta	   INT
 );
 
 
@@ -152,7 +153,7 @@ INSERT INTO ItemCompra (compraId, estoqueId, qtdComprada, valor_total_item_c, pr
 VALUES (3, 2, 10, 1000.0, 100.0);
 
 INSERT INTO ItemCompra (compraId, estoqueId, qtdComprada, valor_total_item_c, preco_prod_c)
-VALUES (4, 3, 4, 320.0, 80.0);
+VALUES (4, 3, 4, 320.0, 80.0);				
 
 -- Inserção de vendas
 INSERT INTO Venda (cli_venda_id, valor_total_venda, dt_venda, qtd_itens, qtd_parcelas)
