@@ -154,7 +154,6 @@ VALUES (3, 2, 10, 1000.0, 100.0);
 INSERT INTO ItemCompra (compraId, estoqueId, qtdComprada, valor_total_item_c, preco_prod_c)
 VALUES (4, 3, 4, 320.0, 80.0);
 
-
 -- Inserção de vendas
 INSERT INTO Venda (cli_venda_id, valor_total_venda, dt_venda, qtd_itens, qtd_parcelas)
 VALUES (1, 500.0, CURRENT_TIMESTAMP, 2, 1);
