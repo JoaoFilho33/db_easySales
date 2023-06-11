@@ -7,7 +7,7 @@ CREATE TABLE Cliente (
   	logradouro_cli  VARCHAR(25) NOT NULL,
   	cep_cli         VARCHAR(11) NOT NULL,
   	cidade_cli      VARCHAR(20) NOT NULL,
-	email_cli		VARCHAR(25),
+	email_cli		VARCHAR(25) NOT NULL,
 	telefone		VARCHAR(12) NOT NULL
 );
 
@@ -20,11 +20,10 @@ CREATE TABLE Fornecedor (
   	cep_fn            VARCHAR(13) NOT NULL,
   	cidade_fn         VARCHAR(20) NOT NULL,
 	telefone_fn		  VARCHAR(15) NOT NULL,
-	cpf_fn			  VARCHAR(15) NOT NULL,
-	email_fn		  VARCHAR(25),
-	telefone 		  VARCHAR(12) NOT NULL
+	cpf_fn			  VARCHAR(18) NOT NULL,
+	email_fn		  VARCHAR(25) NOT NULL
 );
-
+SELECT * FROM FORNECEDOR
 CREATE TABLE Compra (
   	id_compra               SERIAL NOT NULL PRIMARY KEY,
 	fn_compra_id          	INT NOT NULL REFERENCES Fornecedor(id_fn),
@@ -50,6 +49,7 @@ CREATE TABLE Venda (
 	qtd_itens			   INT NOT NULL,
   	qtd_parcelas	       INT NOT NULL
 );
+
 
 CREATE TABLE ItemVenda (
 	vendaId                INT NOT NULL REFERENCES Venda(id_venda),
@@ -180,67 +180,70 @@ select * from estoque
 
 
 ------------------------------------------------------------------------------------------
---FUNCTIONS
+--					FUNCTIONS
 ------------------------------------------------------------------------------------------
 /*-----------------------------
 	VALIDAR CPF
 */-----------------------------
-CREATE OR REPLACE FUNCTION validar_cpf(cpf TEXT)
+CREATE OR REPLACE FUNCTION validar_cnpj(cnpj TEXT)
 RETURNS VOID AS $$
 DECLARE
+    cnpj_limpo TEXT;
+    multiplicador1 CONSTANT INTEGER[] := ARRAY[5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    multiplicador2 CONSTANT INTEGER[] := ARRAY[6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
     soma1 INT := 0;
     soma2 INT := 0;
-    i INT;
     digito1 INT;
     digito2 INT;
-    multiplicador INT := 10;
-    cpf_limpo TEXT;
+    resto INT;
 BEGIN
-    -- Remover caracteres não numéricos do CPF
-    cpf_limpo := regexp_replace(cpf, '[^0-9]', '', 'g');
+    -- Remover caracteres não numéricos do CNPJ
+    cnpj_limpo := regexp_replace(cnpj, '[^0-9]', '', 'g');
     
-    -- Verificar se o CPF tem 11 dígitos
-    IF length(cpf_limpo) <> 11 THEN
-		RAISE EXCEPTION 'CPF INVÁLIDO. O CAMPO DEVE POSSUIR 11 DÍGITOS!';
+    -- Verificar se o CNPJ tem 14 dígitos
+    IF length(cnpj_limpo) <> 14 THEN
+        RAISE EXCEPTION 'CNPJ INVÁLIDO. O CAMPO DEVE POSSUIR 14 DÍGITOS!';
     END IF;
     
     -- Verificar se todos os dígitos são iguais
-    IF cpf_limpo = repeat(cpf_limpo[1], 11) THEN
-		RAISE EXCEPTION 'TODOS OS DIGITOS SÃO IGUAIS';
-	END IF;
+    IF cnpj_limpo = repeat(substring(cnpj_limpo FROM 1 FOR 1), 14) THEN
+        RAISE EXCEPTION 'TODOS OS DÍGITOS DO CNPJ SÃO IGUAIS!';
+    END IF;
     
     -- Cálculo do primeiro dígito verificador
-    FOR i IN 1..9 LOOP
-        soma1 := soma1 + CAST(cpf_limpo[i] AS INT) * multiplicador;
-        multiplicador := multiplicador - 1;
+    FOR i IN 1..12 LOOP
+        soma1 := soma1 + CAST(substring(cnpj_limpo FROM i FOR 1) AS INT) * multiplicador1[i];
     END LOOP;
     
-    digito1 := (soma1 * 10) % 11;
-    IF digito1 = 10 THEN
+    resto := soma1 % 11;
+    
+    IF resto < 2 THEN
         digito1 := 0;
+    ELSE
+        digito1 := 11 - resto;
     END IF;
     
     -- Cálculo do segundo dígito verificador
-    multiplicador := 11;
-    FOR i IN 1..10 LOOP
-        soma2 := soma2 + CAST(cpf_limpo[i] AS INT) * multiplicador;
-        multiplicador := multiplicador - 1;
+    FOR i IN 1..13 LOOP
+        soma2 := soma2 + CAST(substring(cnpj_limpo FROM i FOR 1) AS INT) * multiplicador2[i];
     END LOOP;
     
-    digito2 := (soma2 * 10) % 11;
-    IF digito2 = 10 THEN
+    resto := soma2 % 11;
+    
+    IF resto < 2 THEN
         digito2 := 0;
+    ELSE
+        digito2 := 11 - resto;
     END IF;
     
     -- Verificar se os dígitos verificadores são válidos
-    IF digito1 = CAST(cpf_limpo[10] AS INT) AND digito2 = CAST(cpf_limpo[11] AS INT) THEN
-        RAISE LOG 'CPF VÁLIDO';
-	END IF;
-
-    RAISE EXCEPTION 'CPF INVÁLIDO. DÍGITOS VERIFICADORES INCORRETOS!';
+    IF digito1 = CAST(substring(cnpj_limpo FROM 13 FOR 1) AS INT) AND digito2 = CAST(substring(cnpj_limpo FROM 14 FOR 1) AS INT) THEN
+        RAISE LOG 'CNPJ VÁLIDO!';
+    ELSE
+        RAISE EXCEPTION 'CNPJ INVÁLIDO!';
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
-
 /*-----------------------------------
 	VALIDAR CPNJ
 */-----------------------------------
@@ -266,13 +269,13 @@ BEGIN
     END IF;
     
     -- Verificar se todos os dígitos são iguais
-    IF cnpj_limpo = repeat(cnpj_limpo[1], 14) THEN
+    IF substring(cnpj_limpo, 1, 1) = repeat(substring(cnpj_limpo, 1, 1), 14) THEN
         RAISE EXCEPTION 'TODOS OS DÍGITOS DO CNPJ SÃO IGUAIS!';
     END IF;
     
     -- Cálculo do primeiro dígito verificador
     FOR i IN 1..12 LOOP
-        soma1 := soma1 + CAST(cnpj_limpo[i] AS INT) * multiplicador1[i];
+        soma1 := soma1 + CAST(substring(cnpj_limpo, i) AS INT) * multiplicador1[i];
     END LOOP;
     
     resto := soma1 % 11;
@@ -285,7 +288,7 @@ BEGIN
     
     -- Cálculo do segundo dígito verificador
     FOR i IN 1..13 LOOP
-        soma2 := soma2 + CAST(cnpj_limpo[i] AS INT) * multiplicador2[i];
+        soma2 := soma2 + CAST(substring(cnpj_limpo, i) AS INT) * multiplicador2[i];
     END LOOP;
     
     resto := soma2 % 11;
@@ -297,13 +300,13 @@ BEGIN
     END IF;
     
     -- Verificar se os dígitos verificadores são válidos
-    IF digito1 = CAST(cnpj_limpo[13] AS INT) AND digito2 = CAST(cnpj_limpo[14] AS INT) THEN
+    IF digito1 = CAST(substring(cnpj_limpo, 13) AS INT) AND digito2 = CAST(substring(cnpj_limpo, 14) AS INT) THEN
         RAISE LOG 'CNPJ VÁLIDO!';
     ELSE
         RAISE EXCEPTION 'CNPJ INVÁLIDO!';
     END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE 'plpgsql';
 
 /*----------------------------------
 	VALIDAR SE É CPF OU NPJ
@@ -323,7 +326,7 @@ BEGIN
         RETURN NULL;  -- Não é CNPJ nem CPF
     END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE 'plpgsql';
 
 
 /*----------------------------
@@ -340,7 +343,7 @@ BEGIN
         RAISE EXCEPTION 'TELEFONE INVÁLIDO';
     END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE 'plpgsql';
 
 
 
@@ -352,20 +355,20 @@ RETURNS VOID AS $$
 BEGIN
     -- Verificar se o email tem pelo menos um @ e um ponto após o @
     IF position('@' IN email) = 0 OR position('.' IN substring(email, position('@' IN email))) = 0 THEN
-        RAISE EXCEPTION 'EMAIL INVÁLIDO'
+        RAISE EXCEPTION 'EMAIL INVÁLIDO';
     END IF;
     
     -- Verificar se o email não começa ou termina com um ponto
     IF email LIKE '.%' OR email LIKE '%.' THEN
-		RAISE EXCEPTION 'EMAIL INVÁLIDO'
+		RAISE EXCEPTION 'EMAIL INVÁLIDO';
 	END IF;
     
     -- Verificar se o email não contém espaços em branco
     IF position(' ' IN email) <> 0 THEN
-		RAISE EXCEPTION 'EMAIL INVÁLIDO'
+		RAISE EXCEPTION 'EMAIL INVÁLIDO';
 	END IF;   
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE 'plpgsql';
 
 
 
@@ -384,31 +387,158 @@ BEGIN
         RAISE EXCEPTION 'CEP INVÁLIDO';
     END IF;
 END;
+$$ LANGUAGE 'plpgsql';
+
+
+/*---------------------------------------------------
+			ABATER VENDA
+	CLIENTE PODE ABATER UMA OU MAIS PARCELAS
+*/---------------------------------------------------
+CREATE OR REPLACE FUNCTION ABATER_PARCELA(NC VARCHAR(40), QUANT_ABATE INT)
+RETURNS VOID AS $$
+DECLARE
+	QUANT_FALTA INT; --QTD PARCELAS FALTANTES
+	QUANT_TOTAL INT;
+	COD_CLI INT;
+BEGIN
+	SELECT ID_CLI INTO COD_CLI FROM CLIENTE WHERE NOME_CLI = NC;
+	SELECT QTD_PARCELAS_FALTA INTO QUANT_FALTA FROM VENDA WHERE CLI_VENDA_ID = COD_CLI;
+	SELECT QTD_PARCELAS_TOTAL INTO QUANT_TOTAL FROM VENDA WHERE CLI_VENDA_ID = COD_CLI;
+	
+	IF QUANT_FALTA > QUANT_TOTAL THEN 
+		UPDATE VENDA SET QTD_PARCELAS_FALTA = QTD_PARCELAS_FALTA - QUANT_ABATE;
+	ELSIF QUANT_FALTA == 0 THEN
+		RAISE LOG 'COMPRA JÁ QUITADA';
+	ELSEIF QUANT_FALTA == QUANT_TOTAL THEN
+		UPDATE VENDA SET QTD_PARCELAS_FALTA = QTD_PARCELAS_FALTA - QUANT_ABATE; --CRIAR TRIGGER PARA NÃO DEIXAR ABATER A PONTO DE FICAR >0
+	END IF;
+END;
 $$ LANGUAGE plpgsql;
 
+/*---------------------------------------------------
+			REALIZAR VENDA
+*/----------------------------------------------------
+SELECT * FROM REALIZAR REALIZAR_VENDA(1, 'PRODUTO A', 'EMPRESA A', 'MARIA SANTOS', 5, 2)
+SELECT * FROM EMPRESA
+SELECT * FROM ESTOQUE
+SELECT * FROM CLIENTE
+SELECT * FROM VENDA
+
+
+CREATE OR REPLACE FUNCTION REALIZAR_VENDA(CV INT, NP VARCHAR(25), NE VARCHAR(15), NC VARCHAR(40), QV INT, QUANT_PARC INT) --IMPLEMENTAR ABATIMENTO DE PARCELAS
+RETURNS VOID AS $$
+DECLARE 
+	QUANT_EST INT;
+	--QUANT_PARC_TOTAL INT;
+	--QUANT_PARC_FALTA INT;
+	COD_PROD INT; --COD_PRO
+	COD_EMP INT; --CEO_EMP
+	COD_CLI INT; --COD_CLI
+	VALOR_PROD INT; --VALOR_UNI
+	COD_EST INT;
+BEGIN
+	PERFORM CLIENTE_EXISTE(NC);
+	PERFORM EMPRESA_EXISTE(NE);
+	SELECT ID_PROD INTO COD_PROD FROM PRODUTO WHERE NOME_PROD=NP;
+	SELECT ID_CLI INTO COD_CLI FROM CLIENTE WHERE NOME_CLI=NC;
+	SELECT PRECO_PROD INTO VALOR_PROD FROM ESTOQUE WHERE PROD_ID=CP; -- IN (SELECT ID_PROD FROM PRODUTO WHERE PROD_ID = ID_PROD)
+	SELECT ID_EMP INTO COD_EMP FROM EMPRESA WHERE NOME_EMP=NE;
+	SELECT ID_ESTOQUE INTO COD_EST FROM ESTOQUE WHERE EMPID=COD_EMP AND PRODID=COD_PROD;
+	SELECT QUANT_ESTQ INTO QUANT_EST FROM ESTOQUE WHERE ID_ESTOQUE=COD_EST;
+	--SELECT QTD_PARCELAS_TOTAL INTO QUANT_PARC_TOTAL FROM VENDA WHERE CLI_VENDA_ID = COD_CLI;
+	--SELECT QTD_PARCELAS_FALTA INTO QUANT_PARC_FALTA FROM VENDA WHERE CLI_VENDA_ID = COD_CLI;
+
+IF (QUANT_EST>=QV) THEN
+	IF NOT EXISTS (SELECT * FROM VENDA WHERE COD_VENDA=CV) THEN 
+		IF QUANT_PARC > 1 THEN-- SE NÃO FOR A VISTA, AS PARCELAS FALTANRTES DEVEM SER IGUAIS AS TOTAIS
+			INSERT INTO VENDA VALUES(CV, COD_CLI, VALOR_PROD*QV, CURRENT_DATE, QV, QUANT_PARC, QUANT_PARC); --criar trigger para venda (verificar se venda existe)
+		ELSE 
+			INSERT INTO VENDA VALUES(CV, COD_CLI, VALOR_PROD*QV, CURRENT_DATE, QV, QUANT_PARC);
+		END IF;
+		INSERT INTO ITEM_VENDA VALUES(CV, COD_EST, QV, VALOR_PROD*QV);
+		UPDATE ESTOQUE SET QUANT_ESTQ=QUANT_ESTQ-QV WHERE ID_ESTOQUE=COD_EST;
+	ELSE
+		UPDATE VENDA SET VALOR_TOTAL_VENDA=VALOR_TOTAL_VENDA+(VALOR_PROD*QV), QTD_ITENS=QTD_ITENS+QV
+		WHERE COD_VENDA=CV;
+		IF EXISTS (SELECT * FROM ITEM_VENDA WHERE VENDAID=CV AND ESTOQUEID=COD_EST) THEN 
+			UPDATE ITEM_VENDA SET QTD_VENDIDA=QTD_VENDIDA+QV,
+			VALOR_TOTAL_ITEM_V=VALOR_TOTAL_ITEM_V+(VALOR_PROD*QV);
+		ELSE 
+			INSERT INTO ITEM_VENDA VALUES(CV, COD_EST, QV, VALOR_PROD*QV);
+		END IF;
+		UPDATE ESTOQUE SET QUANT_ESTQ=QUANT_ESTQ-QV WHERE ID_ESTOQUE=COD_EST;
+	END IF;
+END IF;	
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+/*========================================
+		FUNÇÃO SE CLIENTE EXISTE
+*/--=======================================
+CREATE OR REPLACE FUNCTION CLIENTE_EXISTE(NC VARCHAR(40))
+RETURNS VOID
+AS $$
+BEGIN 
+	IF NOT EXISTS(SELECT * FROM CLIENTE WHERE LOWER(NOME_CLI) = LOWER(NC)) THEN
+		RAISE EXCEPTION 'O CLIENTE AINDA NÃO FOI CADASTRADO';
+	END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+
+/*========================================
+		FUNÇÃO SE EMPRESA EXISTE
+*/--=======================================
+CREATE OR REPLACE FUNCTION EMPRESA_EXISTE(NE VARCHAR(15))
+RETURNS VOID
+AS $$
+BEGIN
+	IF NOT EXISTS(SELECT * FROM EMPRESA WHERE LOWER(NOME_EMP) = LOWER(NE)) THEN
+		RAISE EXCEPTION 'VOCÊ NÃO TEM ACESSO A ESSA EMPRESA';
+	END IF;
+END;
+$$ LANGUAGE plpgsql;
 
 
 /*=====================================================================================================
 			TRIGGERS
 */-----------------------------------------------------
+-----------------------VALIDAR VENDA------------------------------------
+CREATE OR REPLACE FUNCTION T_VALIDAR_VENDA()
+RETURNS TRIGGER AS $$
+BEGIN
+	PERFORM CLIENTE_EXISTE()
+	PERFORM PRODUTO_EXISTE(NEW.CLI)
+END;
+$$ LANGUAGE 'plpgsql';
+
+CREATE TRIGGER TRIGGER_VALIDAR_VENDA
+BEFORE INSERT OR UPDATE ON VENDA
+FOR EACH ROW
+EXECUTE PROCEDURE T_VALIDAR_VENDA()
+
+
 ----------------------- VALIDAR CLIENTE --------------------------------
 		
 CREATE OR REPLACE FUNCTION T_VALIDAR_CLIENTE()
 RETURNS TRIGGER AS $$
 	BEGIN
-		PERFORM VALIDAR_EMAIL(NEW.EMAIL);
+		PERFORM VALIDAR_EMAIL(NEW.email_cli);
 		PERFORM VALIDAR_TELEFONE(NEW.TELEFONE);
-		PERFORM VALIDAR_CEP(NEW.CEP);
+		PERFORM VALIDAR_CEP(NEW.cep_cli);
 		PERFORM VALIDAR_CPF(NEW.CPF);
 		RETURN NEW;
 END;
 $$ LANGUAGE 'plpgsql';
 
 
-CREATE OR REPLACE TRIGGER TRIGGER_VALIDAR_CLIENTE 
+CREATE TRIGGER TRIGGER_VALIDAR_CLIENTE 
 BEFORE INSERT OR UPDATE ON CLIENTE
 FOR EACH ROW
-EXECUTE PROCEDURE T_VALIDAR_CLIENTE
+EXECUTE PROCEDURE T_VALIDAR_CLIENTE()
+
+--drop trigger trigger_validar_cliente on cliente
 
 
 -------------------------------------------------------------------------
@@ -418,14 +548,16 @@ EXECUTE PROCEDURE T_VALIDAR_CLIENTE
 CREATE OR REPLACE FUNCTION T_VALIDAR_FORNECEDOR()
 RETURNS TRIGGER AS $$
 	BEGIN
-		PERFORM VALIDAR_EMAIL(NEW.EMAIL);
-		PERFORM VALIDAR_TELEFONE(NEW.TELEFONE);
-		PERFORM VALIDAR_CEP(NEW.CEP);
+		PERFORM VALIDAR_EMAIL(NEW.EMAIL_fn);
+		PERFORM VALIDAR_TELEFONE(NEW.TELEFONE_fn);
+		PERFORM VALIDAR_CEP(NEW.CEP_fn);
 		
-		IF VERIFICAR_CNPJ_CPF(NEW.CPF) THEN
-			PERFORM VALIDAR_CPF(NEW.CPF);
+		IF VERIFICAR_CNPJ_CPF(NEW.CPF_fn) THEN
+			PERFORM VALIDAR_CNPJ(NEW.CPF_fn);
+		ELSEIF VERIFICAR_CNPJ_CPF(NEW.CPF_fn) = FALSE THEN
+			PERFORM VALIDAR_CPF(NEW.cpf_fn);
 		ELSE
-			PERFORM VALIDAR_CNPJ(NEW.CNPJ);
+			RAISE EXCEPTION 'O valor informado é inválido.';
 		END IF;
 		
 		RETURN NEW;
@@ -433,14 +565,54 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-CREATE OR REPLACE TRIGGER TRIGGER_VALIDAR_FORNECEDOR
+CREATE TRIGGER TRIGGER_VALIDAR_FORNECEDOR
 BEFORE INSERT OR UPDATE ON FORNECEDOR
 FOR EACH ROW
-EXECUTE PROCEDURE T_VALIDAR_FORNECEDOR
+EXECUTE PROCEDURE T_VALIDAR_FORNECEDOR()
 
 
+-------------------------------------------------------------------------
+
+---------------------- VALIDAR EMPRESA-------------------------------
+CREATE OR REPLACE FUNCTION T_VALIDAR_EMPRESA()
+RETURNS TRIGGER AS $$
+	BEGIN
+		PERFORM VALIDAR_EMAIL(NEW.EMAIL);
+		
+		IF VERIFICAR_CNPJ_CPF(NEW.CPF_CNPJ) THEN
+			PERFORM VALIDAR_CNPJ(NEW.CPF_CNPJ);
+		ELSEIF VERIFICAR_CNPJ_CPF(NEW.CPF_CNPJ) = FALSE THEN
+			PERFORM VALIDAR_CPF(NEW.CPF_CNPJ);
+		ELSE
+			RAISE EXCEPTION 'O VALOR INFORMADO É INVÁLIDO.';
+		END IF;
+		
+		RETURN NEW;
+END;
+$$ LANGUAGE 'plpgsql';
 
 
+CREATE TRIGGER TRIGGER_VALIDAR_EMPRESA
+BEFORE INSERT OR UPDATE ON EMPRESA
+FOR EACH ROW
+EXECUTE PROCEDURE T_VALIDAR_EMPRESA()
+
+
+select * from empresa
+---------------------------------------------------------------------------------------
+-------------------------VALIDAR PRODUTO-------------------------------------------------
+CREATE OR REPLACE FUNCTION PRODUTO_EXISTE(NP)
+
+CREATE OR REPLACE FUNCTION T_VALIDAR_PRODUTO()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF EXISTS (SELECT * FROM PRODUTO )
+	
+
+CREATE TRIGGER TRIGGER_VALIDAR_PRODUTO
+BEFORE INSERT OR UPDATE ON PRODUTO
+FOR EACH ROW
+EXECUTE PROCEDURE T_VALIRDAR_PRODUTO()
 --==============================================================================================================
 --							CADASTROS
 --=============================================================================================================
@@ -448,24 +620,27 @@ EXECUTE PROCEDURE T_VALIDAR_FORNECEDOR
 	CADASTRAR EMPRESA
 */----------------------------
 CREATE OR REPLACE FUNCTION CADASTRAR_EMPRESA(
-	NOME_EMP VARCHAR(15), EMAIL_EMP VARCHAR(25), SENHA_EMP VARCHAR(8), CARGO_ID(4)
+	ID_EMP INT,
+	NOME_EMP VARCHAR(15), 
+	EMAIL_EMP VARCHAR(25), 
+	SENHA_EMP VARCHAR(8)
 )
 RETURNS void AS
 $$
 DECLARE
 	  VAR_CARGO TEXT;
 BEGIN
-	  SELECT NOME_CARGO INTO VAR_CARGO FROM CARGO WHERE ID_CARGO = CARGO_ID -- ADICIONAR TABELA CARGO
+	  --SELECT NOME_CARGO INTO VAR_CARGO FROM CARGO WHERE ID_CARGO = CARGO_ID -- ADICIONAR TABELA CARGO
 	  
-	  EXECUTE format('CREATE USER "%I" WITH LOGIN PASSWORD %L VALID UNTIL %L', NOME_EMP, EMAIL_EMP, SENHA_EMP);
-      EXECUTE format('ALTER GROUP "%I" ADD USER "%I"', VAR_CARGO, NOME_EMP);
+	  EXECUTE format('CREATE USER "%I" WITH LOGIN PASSWORD %L VALID UNTIL TIMESTAMP ''9999-12-31''', NOME_EMP, SENHA_EMP);
+      --EXECUTE format('ALTER GROUP "%I" ADD USER "%I"', VAR_CARGO, NOME_EMP);
 	  
 	  INSERT INTO CLIENTE VALUES 
-	  (DEFAULT, NOME_EMP, EMAIL_EMP, SENHA_EMP;
+	  (ID_EMP, NOME_EMP, EMAIL_EMP, SENHA_EMP);
 	  RAISE NOTICE 'EMPRESA CADASTRADO COM SUCESSO!';
 END;
 $$
-LANGUAGE plpgsql;
+LANGUAGE 'plpgsql';
 
 /*----------------------------
 	CADASTRAR CLIENTE
@@ -483,22 +658,31 @@ CREATE OR REPLACE FUNCTION CADASTRAR_CLIENTE(
 )
 RETURNS void AS
 $$
+DECLARE
+	cliente_existe BOOLEAN;
 BEGIN
-	  INSERT INTO CLIENTE VALUES 
+    SELECT EXISTS (SELECT 1 FROM CLIENTE WHERE CLIENTE.CPF = CADASTRAR_CLIENTE.CPF) INTO CLIENTE_EXISTE;
+
+    IF cliente_existe THEN
+        RAISE EXCEPTION 'CLIENTE JÁ CADASTRADO!';
+    ELSE
+       INSERT INTO CLIENTE VALUES 
 	  (DEFAULT, nome_cli, CPF, bairro_cli, num_cli, logradouro_cli, cep_cli, cidade_cli, email_cli, telefone);
-	  RAISE NOTICE 'CLIENTE CADASTRADO COM SUCESSO!';
+	  RAISE EXCEPTION 'CLIENTE CADASTRADO COM SUCESSO!';
+    END IF;
 END;
 $$
-LANGUAGE plpgsql;
+LANGUAGE 'plpgsql';
 
-SELECT * FROM CADASTRAR_CLIENTE('John Doe', '123456789', 'Street 1', '123', 'rua200', '12345', 'City', 'doezin@hotmail.com', '86995120059');
+SELECT * FROM CADASTRAR_CLIENTE('John Doe', '079.586.023-40', 'Street 1', '123', 'rua200', '64380-000', 'City', 'doezin@hotmail.com', '86 995120059');
 SELECT * FROM CLIENTE
+delete from cliente where id_cli = 21
 
 
 /*----------------------------
 	CADASTRAR FORNECEDOR
 */----------------------------
-CREATE OR REPLACE FUNCTION CADATRAR_FORNECEDOR(
+CREATE OR REPLACE FUNCTION CADASTRAR_FORNECEDOR(
 	nome_fn           VARCHAR(40),
   	bairro_fn         VARCHAR(20),
   	num_fn            VARCHAR(13),
@@ -507,21 +691,33 @@ CREATE OR REPLACE FUNCTION CADATRAR_FORNECEDOR(
   	cidade_fn         VARCHAR(20),
 	telefone_fn		  VARCHAR(15),
 	cpf_fn			  VARCHAR(15),
-	email_fn		  VARCHAR(25),
-	telefone 		  VARCHAR(12)
+	email_fn		  VARCHAR(25)
 )
 RETURNS void AS
 $$
+DECLARE 
+	FORNECEDOR_EXISTE BOOLEAN;
 BEGIN
-	  INSERT INTO CLIENTE VALUES 
-	  (DEFAULT, nome_fn, bairro_fn, num_fn, logradouro_fn, cep_fn, cidade_fn, telefone_fn, cpf_fn, email_fn, telefone);
-	  RAISE NOTICE 'FORNECEDOR CADASTRADO COM SUCESSO!';
+	SELECT EXISTS (SELECT 1 FROM FORNECEDOR WHERE FORNECEDOR.CPF_FN = CADASTRAR_FORNECEDOR.CPF_FN) INTO FORNECEDOR_EXISTE;
+
+	IF FORNECEDOR_EXISTE THEN
+		RAISE EXCEPTION 'FORNECEDOR JÁ CADASTRADO';
+	ELSE
+		INSERT INTO FORNECEDOR VALUES
+		(DEFAULT, nome_fn, bairro_fn, num_fn, logradouro_fn, cep_fn, cidade_fn, telefone_fn, cpf_fn, email_fn);
+		 RAISE NOTICE 'FORNECEDOR CADASTRADO COM SUCESSO!';
+	END IF;
 END;
 $$
-LANGUAGE plpgsql;
-	   
+LANGUAGE 'plpgsql';
+
+SELECT * FROM CADASTRAR_FORNECEDOR('Nome do Fornecedor', 'Bairro do Fornecedor', '123', 'Logradouro1','64380-000', 'Cidade do Fornecedor', '86 995120059', '268442820001-05', 'emailforn@example.com');
+SELECT * FROM FORNECEDOR;
+delete from fornecedor where id_fn = 16
+
+
 /*-------------------------------
-	   
+	   CADASTRAR PRODUTO
 */-------------------------------
 
 
