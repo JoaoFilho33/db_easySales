@@ -194,65 +194,62 @@ select * from estoque
 /*-----------------------------
 	VALIDAR CPF
 */-----------------------------
-CREATE OR REPLACE FUNCTION validar_cnpj(cnpj TEXT)
+CREATE OR REPLACE FUNCTION validar_cpf(cpf TEXT)
 RETURNS VOID AS $$
 DECLARE
-    cnpj_limpo TEXT;
-    multiplicador1 CONSTANT INTEGER[] := ARRAY[5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-    multiplicador2 CONSTANT INTEGER[] := ARRAY[6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
     soma1 INT := 0;
     soma2 INT := 0;
+    i INT;
     digito1 INT;
     digito2 INT;
-    resto INT;
+    multiplicador INT := 10;
+    cpf_limpo TEXT;
 BEGIN
-    -- Remover caracteres não numéricos do CNPJ
-    cnpj_limpo := regexp_replace(cnpj, '[^0-9]', '', 'g');
+    -- Remover caracteres não numéricos do CPF
+    cpf_limpo := regexp_replace(cpf, '[^0-9]', '', 'g');
     
-    -- Verificar se o CNPJ tem 14 dígitos
-    IF length(cnpj_limpo) <> 14 THEN
-        RAISE EXCEPTION 'CNPJ INVÁLIDO. O CAMPO DEVE POSSUIR 14 DÍGITOS!';
+    -- Verificar se o CPF tem 11 dígitos
+    IF length(cpf_limpo) <> 11 THEN
+        RAISE EXCEPTION 'CPF INVÁLIDO. O CAMPO DEVE POSSUIR 11 DÍGITOS!';
     END IF;
     
     -- Verificar se todos os dígitos são iguais
-    IF cnpj_limpo = repeat(substring(cnpj_limpo FROM 1 FOR 1), 14) THEN
-        RAISE EXCEPTION 'TODOS OS DÍGITOS DO CNPJ SÃO IGUAIS!';
+    IF cpf_limpo = repeat(substring(cpf_limpo, 1, 1), 11) THEN
+        RAISE EXCEPTION 'TODOS OS DIGITOS SÃO IGUAIS';
     END IF;
     
     -- Cálculo do primeiro dígito verificador
-    FOR i IN 1..12 LOOP
-        soma1 := soma1 + CAST(substring(cnpj_limpo FROM i FOR 1) AS INT) * multiplicador1[i];
+    FOR i IN 1..9 LOOP
+        soma1 := soma1 + CAST(substring(cpf_limpo, i, 1) AS INT) * multiplicador;
+        multiplicador := multiplicador - 1;
     END LOOP;
     
-    resto := soma1 % 11;
-    
-    IF resto < 2 THEN
+    digito1 := (soma1 * 10) % 11;
+    IF digito1 = 10 THEN
         digito1 := 0;
-    ELSE
-        digito1 := 11 - resto;
     END IF;
     
     -- Cálculo do segundo dígito verificador
-    FOR i IN 1..13 LOOP
-        soma2 := soma2 + CAST(substring(cnpj_limpo FROM i FOR 1) AS INT) * multiplicador2[i];
+    multiplicador := 11;
+    FOR i IN 1..10 LOOP
+        soma2 := soma2 + CAST(substring(cpf_limpo, i, 1) AS INT) * multiplicador;
+        multiplicador := multiplicador - 1;
     END LOOP;
     
-    resto := soma2 % 11;
-    
-    IF resto < 2 THEN
+    digito2 := (soma2 * 10) % 11;
+    IF digito2 = 10 THEN
         digito2 := 0;
-    ELSE
-        digito2 := 11 - resto;
     END IF;
     
     -- Verificar se os dígitos verificadores são válidos
-    IF digito1 = CAST(substring(cnpj_limpo FROM 13 FOR 1) AS INT) AND digito2 = CAST(substring(cnpj_limpo FROM 14 FOR 1) AS INT) THEN
-        RAISE LOG 'CNPJ VÁLIDO!';
+    IF digito1 = CAST(substring(cpf_limpo, 10, 1) AS INT) AND digito2 = CAST(substring(cpf_limpo, 11, 1) AS INT) THEN
+        RAISE LOG 'CPF VÁLIDO';
     ELSE
-        RAISE EXCEPTION 'CNPJ INVÁLIDO!';
+        RAISE EXCEPTION 'CPF INVÁLIDO. DÍGITOS VERIFICADORES INCORRETOS!';
     END IF;
 END;
 $$ LANGUAGE plpgsql;
+
 /*-----------------------------------
 	VALIDAR CPNJ
 */-----------------------------------
@@ -572,7 +569,7 @@ EXECUTE PROCEDURE T_VALIDAR_FORNECEDOR()
 CREATE OR REPLACE FUNCTION T_VALIDAR_EMPRESA()
 RETURNS TRIGGER AS $$
 	BEGIN
-		PERFORM VALIDAR_EMAIL(NEW.EMAIL);
+		PERFORM VALIDAR_EMAIL(NEW.email_emp);
 		
 		IF VERIFICAR_CNPJ_CPF(NEW.CPF_CNPJ) THEN
 			PERFORM VALIDAR_CNPJ(NEW.CPF_CNPJ);
