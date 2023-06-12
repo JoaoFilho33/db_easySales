@@ -62,11 +62,7 @@ CREATE TABLE ItemCompra (
 );
 
 CREATE TABLE Venda (
-<<<<<<< HEAD
   	id_venda               INT NOT NULL PRIMARY KEY,
-=======
-  	id_venda               SERIAL NOT NULL PRIMARY KEY,
->>>>>>> 00a138d0552bf55654bcbf58a5e17fdca94a0de1
   	id_cli                 INT NOT NULL REFERENCES Cliente(id_cli),
   	valor_total_venda      REAL NOT NULL,
   	dt_venda	       	   TIMESTAMPTZ NOT NULL,
@@ -185,7 +181,8 @@ INSERT INTO ItemCompra (compraId, estoqueId, qtdComprada, valor_total_item_c, pr
 VALUES (3, 2, 10, 1000.0, 100.0);
 
 INSERT INTO ItemCompra (compraId, estoqueId, qtdComprada, valor_total_item_c, preco_prod_c)
-VALUES (4, 3, 4, 320.0, 80.0);				
+VALUES (4, 3, 4, 320.0, 80.0);
+
 
 -- Inserção de vendas
 INSERT INTO Venda (cli_venda_id, valor_total_venda, dt_venda, qtd_itens, qtd_parcelas)
@@ -705,9 +702,15 @@ EXECUTE FUNCTION T_VALIDAR_NOME_EMPRESA();
 /*----------------------------
 	CADASTRAR EMPRESA
 */----------------------------
-CREATE DATABASE PARAIBA;
-SELECT CADASTRAR_EMPRESA('paraiba', 'paraiba@gmail.com', '1234');
-drop user PARAIBA
+SELECT * FROM CADASTRAR_EMPRESA('empresa2', 'empresa2@gmail.com', '1234');
+SELECT * FROM CADASTRAR_EMPRESA('empresa3', 'empresa3@gmail.com', '1234');
+SELECT * FROM CADASTRAR_EMPRESA('empresa4', 'empresa4@gmail.com', '1234');
+SELECT * FROM CADASTRAR_EMPRESA('empresa5', 'empresa5@gmail.com', '1234');
+SELECT * FROM CADASTRAR_EMPRESA('empresa6', 'empresa6@gmail.com', '1234');
+
+
+drop user empresa4_user
+
 CREATE OR REPLACE FUNCTION CADASTRAR_EMPRESA(
     NOME_EMP VARCHAR(15), 
     EMAIL_EMP VARCHAR(25), 
@@ -717,26 +720,40 @@ RETURNS void AS
 $$
 DECLARE
     VAR_CARGO TEXT;
+    NOME_USUARIO VARCHAR(30);
 BEGIN
-   -- Criar usuário para a empresa
-	EXECUTE format('CREATE USER %I WITH PASSWORD %L', NOME_EMP || '_user', quote_literal(SENHA_EMP));
+    NOME_USUARIO := NOME_EMP || '_user';
 
-	-- Conceder permissões ao usuário para o banco de dados da empresa
-	EXECUTE format('GRANT ALL PRIVILEGES ON DATABASE %I TO %I', quote_ident(NOME_EMP), quote_ident(NOME_EMP || '_user'));
+    -- Verificar se o usuário já existe
+    IF EXISTS(SELECT 1 FROM pg_user WHERE usename = NOME_USUARIO) THEN
+        RAISE EXCEPTION 'Usuário já existe: %', NOME_USUARIO;
+        RETURN;
+    END IF;
 
-	-- Conectar ao banco de dados da empresa
-	EXECUTE format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', quote_ident(NOME_EMP));
-	EXECUTE format('GRANT CONNECT ON DATABASE %I TO %I', quote_ident(NOME_EMP), quote_ident(NOME_EMP || '_user'));
+      -- Criar usuário para a empresa
+    EXECUTE format('CREATE USER %I WITH PASSWORD %L', NOME_USUARIO, quote_literal(SENHA_EMP)::text);
 
-	-- Criar esquema para a empresa
-	EXECUTE format('CREATE SCHEMA %I AUTHORIZATION %I', quote_ident(NOME_EMP), quote_ident(NOME_EMP || '_user'));
+    -- Conceder permissões ao usuário para o banco de dados da empresa
+    EXECUTE format('GRANT ALL PRIVILEGES ON DATABASE %I TO %I', NOME_EMP, NOME_USUARIO);
 
-	-- Conceder permissões ao usuário para o esquema da empresa
-	EXECUTE format('GRANT USAGE, CREATE ON SCHEMA %I TO %I', quote_ident(NOME_EMP), quote_ident(NOME_EMP || '_user'));
-	EXECUTE format('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA %I TO %I', quote_ident(NOME_EMP), quote_ident(NOME_EMP || '_user'));
-	EXECUTE format('GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA %I TO %I', quote_ident(NOME_EMP), quote_ident(NOME_EMP || '_user'));	
-	EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT ALL PRIVILEGES ON TABLES TO %I', quote_ident(NOME_EMP), quote_ident(NOME_EMP || '_user'));
+    -- Conectar ao banco de dados da empresa
+    EXECUTE format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', NOME_EMP);
+    EXECUTE format('GRANT CONNECT ON DATABASE %I TO %I', NOME_EMP, NOME_USUARIO);
 
+    -- Criar esquema para a empresa
+    EXECUTE format('CREATE SCHEMA %I AUTHORIZATION %I', NOME_EMP, NOME_USUARIO);
+
+    -- Alterar o esquema padrão do usuário para o esquema da empresa
+    EXECUTE format('ALTER USER %I SET search_path = %I, public', NOME_USUARIO, NOME_EMP);
+
+    -- Atribuir o esquema ao banco de dados da empresa
+    EXECUTE format('ALTER DATABASE %I SET search_path = %I, public', NOME_EMP, NOME_EMP);
+
+    -- Conceder permissões ao usuário para o esquema da empresa
+    EXECUTE format('GRANT USAGE, CREATE ON SCHEMA %I TO %I', NOME_EMP, NOME_USUARIO);
+    EXECUTE format('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA %I TO %I', NOME_EMP, NOME_USUARIO);
+    EXECUTE format('GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA %I TO %I', NOME_EMP, NOME_USUARIO);
+    EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT ALL PRIVILEGES ON TABLES TO %I', NOME_EMP, NOME_USUARIO);
 
     -- Criar tabelas específicas para a empresa
     EXECUTE format('CREATE TABLE %I.Cliente (
@@ -781,7 +798,7 @@ BEGIN
 
     EXECUTE format('CREATE TABLE %I.Produto (
         id_prod     SERIAL PRIMARY KEY NOT NULL,
-        nome_prod   VARCHAR NOT NULL
+        nome_prod   VARCHAR(255) NOT NULL
     )', NOME_EMP);
 
     EXECUTE format('CREATE TABLE %I.Estoque (
@@ -821,16 +838,21 @@ BEGIN
 
     -- Inserir os dados da empresa na tabela Empresa
     EXECUTE format('INSERT INTO %I.Empresa (nome_emp, email_emp, senha_emp) VALUES (%L, %L, %L)',
-        NOME_EMP, NOME_EMP, EMAIL_EMP, SENHA_EMP);
+    NOME_EMP, quote_literal(NOME_EMP), quote_literal(EMAIL_EMP), quote_literal(SENHA_EMP));
+	
+	EXECUTE format('ALTER USER %I WITH PASSWORD %L', NOME_USUARIO, quote_literal(SENHA_EMP)::text);
 
     RAISE NOTICE 'EMPRESA CADASTRADA COM SUCESSO!';
 END;
 $$
 LANGUAGE 'plpgsql';
 
+ALTER USER empresa6_user WITH PASSWORD '1234';
 
 
+SELECT usename FROM pg_user 
 
+SELECT usename, usesuper, usecreatedb, usesysid FROM pg_user WHERE usename = 'empresa1_user';
 
 
 
@@ -916,6 +938,8 @@ delete from fornecedor where id_fn = 16
 */-------------------------------
 
 
+select * from empresa3.cliente
+select * from empresa3.cadastrar_fornecedor('Fornecedor C', 'Bairro B', '321', 'Rua Alternativa', '12345-678', 'Curitiba', '41123456789', '555.666.777-88', 'fornecedorC@example.com')
 
 
 
