@@ -7,34 +7,34 @@
             OK-T_VALIDAR_FORNCEDOR
             OK-T_VALIDAR_CLIENTE
 
-            -VALIDAR SENHA DA EMPRESA
-            -VALIDAR NOME DE USUARIO DA EMPRESA (SE ELE JA EXISTE)
+            OK-VALIDAR SENHA DA EMPRESA
+            OK-VALIDAR NOME DE USUARIO DA EMPRESA (SE ELE JA EXISTE)
 
 *Cadastrar (FUNÇÕES DE CADASTRO INDIVIDUAIS)
     ok-EMPRESA
     ok-FORNECEDOR
     ok-Cliente
 
-*Relatórios:
+*Relatórios: 
     *Vendas
-        -vendas pendentes (cliente comprou e ainda não quitou)
-        -vendas quitadas
-        -VENDAS EFETUADAS (TODAS REGISTRADAS)
+        OK-vendas pendentes (cliente comprou e ainda não quitou)
+        OK-vendas quitadas
+        OK-VENDAS EFETUADAS (TODAS REGISTRADAS)
 
     *Compra
-        -compras efetudas (compras de produtos com fornecedores)
+        OK-compras efetudas (compras de produtos com fornecedores)
     *Produtos
-        -status do produto (se está em falta)
-        -VERIFICAR DISPONIBILIDADE DO PRODUTO (SE TEM ESTOQUE OU NÃO)
-        -VERIFICAR PRODUTOS SEM ESTOQUE (ISSO PODE MUDAR PARA SER UM ALERTA, SE ELE ESTÁ SEM ESTOQUE, ALERTE)
+        OK-status do produto (se está em falta)
+        OK-VERIFICAR DISPONIBILIDADE DO PRODUTO (SE TEM ESTOQUE OU NÃO)
+        OK-VERIFICAR PRODUTOS SEM ESTOQUE (ISSO PODE MUDAR PARA SER UM ALERTA, SE ELE ESTÁ SEM ESTOQUE, ALERTE)
 
 *Fazer venda
     OK-realizar venda (cliente pode comprar a vista ou parcelado)
     OK-verificar se venda já existe
 
 *Fazer compra
-    -realizar compra
-    -verificar se compra já existe
+    -realizar compra - OK?
+    -verificar se compra já existe - OK?
 
 *Alerta (DECIDIR KKK)
     -JUNTO COM RELATÓRIO (MAS, PENSEI EM IMPLEMENTAR ALGO QUE ALERTASSE CASO O CLIENTE FOSSE COMPRAR ALGO E AINDA ESTIVESSE EM DÉBITO COM A EMPRESA)
@@ -42,9 +42,9 @@
 
 **FUNÇÕES FALTANTES (AINDA TEM AS DE CIMA)
     OK-VERIFICAR SE VENDA JA existe
-    -AS QUE ESTÃO EM RELATÓRIO
-    -VERIFICAR PRODUTOS DISPONÍVEIS (QTDE EM ESTOQUE)
-    -VER PRODUTOS DISPONÍVEIS (TALVEZ)
+   OK -AS QUE ESTÃO EM RELATÓRIO
+    OK -VERIFICAR PRODUTOS DISPONÍVEIS (QTDE EM ESTOQUE)
+    OK -VER PRODUTOS DISPONÍVEIS (TALVEZ)
     -REMOVER COMPRA DO PEDIDO (CIENTE FEZ UMA COMPRA E QUEREMOS REMOVER ITENS DESSE PEDIDO)
 
     ok-CLIENTE ABATER UMA COMPRA (SE ELE PARCELOU, ELE DEVE PODER ABATER UMA PARCELA OU MAIS)
@@ -53,10 +53,10 @@
 
 
 **TRIGGERS FALTANTES
-    -ATUALIZAR VALOR TOTAL DE COMPRA
+   (Acho q ta ok. Ainda nao testei) -ATUALIZAR VALOR TOTAL DE COMPRA
     -VALIDAR COMPRA(COM O FORNECEDOR) SE JÁ NÃO FOI FEITA
     OK-VALIDAR VENDA(COM O CLIENTE) SE JÁ NÃO FOI FEITA
-    -NÃO PERMITIR qtd_parcelas_falta FICAR MENOR QUE ZERO
+    -NÃO PERMITIR qtd_parcelas_falta FICAR MENOR QUE ZER    O
 
 **VIEWS
     -RELATÓRIO DE VENDAS POR PERÍODO (PEGAR UM PERÍODO E VER AS VENDAS REALIZADAS) PODEMOS PEGAR POR CLIENTE TAMBÉM
