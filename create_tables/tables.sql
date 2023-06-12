@@ -20,9 +20,8 @@ CREATE TABLE Fornecedor (
   	cep_fn            VARCHAR(13) NOT NULL,
   	cidade_fn         VARCHAR(20) NOT NULL,
 	telefone_fn		  VARCHAR(15) NOT NULL,
-	cpf_fn			  VARCHAR(15) NOT NULL,
-	email_fn		  VARCHAR(25),
-	telefone 		  VARCHAR(12) NOT NULL
+	cpf_cnpj_fn		  VARCHAR(15) NOT NULL,
+	email_fn		  VARCHAR(25)
 );
 
 CREATE TABLE Compra (
@@ -36,7 +35,7 @@ CREATE TABLE ItemCompra (
   	compraId                   INT NOT NULL REFERENCES Compra(id_compra),
   	estoqueId                  INT NOT NULL REFERENCES Estoque(id_estoque),
   	qtdComprada                INT NOT NULL,
-	valor_total_item_c 		   FLOAT NOT NULL,
+	valor_total_item 		   FLOAT NOT NULL,
 	preco_prod_c			   REAL NOT NULL,
   	--dt_compra                TIMESTAMPTZ NOT NULL,
   	CONSTRAINT PRI_ITEM_COMPRA PRIMARY KEY (compraId, estoqueId)
@@ -48,7 +47,8 @@ CREATE TABLE Venda (
   	valor_total_venda      REAL NOT NULL,
   	dt_venda		       TIMESTAMPTZ NOT NULL,
 	qtd_itens			   INT NOT NULL,
-  	qtd_parcelas	       INT NOT NULL
+  	qtd_parcelas_total	   INT NOT NULL,
+	qtd_parcelas_falta	   INT
 );
 
 CREATE TABLE ItemVenda (
@@ -61,6 +61,7 @@ CREATE TABLE ItemVenda (
 
 CREATE TABLE Empresa (
   	id_emp           SERIAL NOT NULL PRIMARY KEY,
+	cpf_cnpj		 varchar(18),
   	nome_emp         VARCHAR(15) NOT NULL,
   	email_emp        VARCHAR(25) NOT NULL, --CRIAR VIEW DE CADA EMPRESA PARA SEU PROPRIO BD
   	senha_emp        VARCHAR(8) NOT NULL
@@ -76,5 +77,5 @@ CREATE TABLE Estoque (
 
 CREATE TABLE Produto (
   	id_prod             SERIAL PRIMARY KEY NOT NULL,
-  	nome_prod           VARCHAR NOT NULL
+  	nome_prod           VARCHAR(25) NOT NULL
 );

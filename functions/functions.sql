@@ -1,60 +1,63 @@
-/*
-    VALIDAR CPF
-*/
-
-CREATE OR REPLACE FUNCTION validar_cpf(cpf TEXT)
+/*-----------------------------
+	VALIDAR CPF
+*/-----------------------------
+CREATE OR REPLACE FUNCTION validar_cnpj(cnpj TEXT)
 RETURNS VOID AS $$
 DECLARE
+    cnpj_limpo TEXT;
+    multiplicador1 CONSTANT INTEGER[] := ARRAY[5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    multiplicador2 CONSTANT INTEGER[] := ARRAY[6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
     soma1 INT := 0;
     soma2 INT := 0;
-    i INT;
     digito1 INT;
     digito2 INT;
-    multiplicador INT := 10;
-    cpf_limpo TEXT;
+    resto INT;
 BEGIN
-    -- Remover caracteres não numéricos do CPF
-    cpf_limpo := regexp_replace(cpf, '[^0-9]', '', 'g');
+    -- Remover caracteres não numéricos do CNPJ
+    cnpj_limpo := regexp_replace(cnpj, '[^0-9]', '', 'g');
     
-    -- Verificar se o CPF tem 11 dígitos
-    IF length(cpf_limpo) <> 11 THEN
-		RAISE EXCEPTION 'CPF INVÁLIDO. O CAMPO DEVE POSSUIR 11 DÍGITOS!';
+    -- Verificar se o CNPJ tem 14 dígitos
+    IF length(cnpj_limpo) <> 14 THEN
+        RAISE EXCEPTION 'CNPJ INVÁLIDO. O CAMPO DEVE POSSUIR 14 DÍGITOS!';
     END IF;
     
     -- Verificar se todos os dígitos são iguais
-    IF cpf_limpo = repeat(cpf_limpo[1], 11) THEN
-		RAISE EXCEPTION 'TODOS OS DIGITOS SÃO IGUAIS';
-	END IF;
+    IF cnpj_limpo = repeat(substring(cnpj_limpo FROM 1 FOR 1), 14) THEN
+        RAISE EXCEPTION 'TODOS OS DÍGITOS DO CNPJ SÃO IGUAIS!';
+    END IF;
     
     -- Cálculo do primeiro dígito verificador
-    FOR i IN 1..9 LOOP
-        soma1 := soma1 + CAST(cpf_limpo[i] AS INT) * multiplicador;
-        multiplicador := multiplicador - 1;
+    FOR i IN 1..12 LOOP
+        soma1 := soma1 + CAST(substring(cnpj_limpo FROM i FOR 1) AS INT) * multiplicador1[i];
     END LOOP;
     
-    digito1 := (soma1 * 10) % 11;
-    IF digito1 = 10 THEN
+    resto := soma1 % 11;
+    
+    IF resto < 2 THEN
         digito1 := 0;
+    ELSE
+        digito1 := 11 - resto;
     END IF;
     
     -- Cálculo do segundo dígito verificador
-    multiplicador := 11;
-    FOR i IN 1..10 LOOP
-        soma2 := soma2 + CAST(cpf_limpo[i] AS INT) * multiplicador;
-        multiplicador := multiplicador - 1;
+    FOR i IN 1..13 LOOP
+        soma2 := soma2 + CAST(substring(cnpj_limpo FROM i FOR 1) AS INT) * multiplicador2[i];
     END LOOP;
     
-    digito2 := (soma2 * 10) % 11;
-    IF digito2 = 10 THEN
+    resto := soma2 % 11;
+    
+    IF resto < 2 THEN
         digito2 := 0;
+    ELSE
+        digito2 := 11 - resto;
     END IF;
     
     -- Verificar se os dígitos verificadores são válidos
-    IF digito1 = CAST(cpf_limpo[10] AS INT) AND digito2 = CAST(cpf_limpo[11] AS INT) THEN
-        RAISE LOG 'CPF VÁLIDO';
-	END IF;
-
-    RAISE EXCEPTION 'CPF INVÁLIDO. DÍGITOS VERIFICADORES INCORRETOS!';
+    IF digito1 = CAST(substring(cnpj_limpo FROM 13 FOR 1) AS INT) AND digito2 = CAST(substring(cnpj_limpo FROM 14 FOR 1) AS INT) THEN
+        RAISE LOG 'CNPJ VÁLIDO!';
+    ELSE
+        RAISE EXCEPTION 'CNPJ INVÁLIDO!';
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -84,13 +87,13 @@ BEGIN
     END IF;
     
     -- Verificar se todos os dígitos são iguais
-    IF cnpj_limpo = repeat(cnpj_limpo[1], 14) THEN
+    IF substring(cnpj_limpo, 1, 1) = repeat(substring(cnpj_limpo, 1, 1), 14) THEN
         RAISE EXCEPTION 'TODOS OS DÍGITOS DO CNPJ SÃO IGUAIS!';
     END IF;
     
     -- Cálculo do primeiro dígito verificador
     FOR i IN 1..12 LOOP
-        soma1 := soma1 + CAST(cnpj_limpo[i] AS INT) * multiplicador1[i];
+        soma1 := soma1 + CAST(substring(cnpj_limpo, i) AS INT) * multiplicador1[i];
     END LOOP;
     
     resto := soma1 % 11;
@@ -103,7 +106,7 @@ BEGIN
     
     -- Cálculo do segundo dígito verificador
     FOR i IN 1..13 LOOP
-        soma2 := soma2 + CAST(cnpj_limpo[i] AS INT) * multiplicador2[i];
+        soma2 := soma2 + CAST(substring(cnpj_limpo, i) AS INT) * multiplicador2[i];
     END LOOP;
     
     resto := soma2 % 11;
@@ -115,15 +118,13 @@ BEGIN
     END IF;
     
     -- Verificar se os dígitos verificadores são válidos
-    IF digito1 = CAST(cnpj_limpo[13] AS INT) AND digito2 = CAST(cnpj_limpo[14] AS INT) THEN
+    IF digito1 = CAST(substring(cnpj_limpo, 13) AS INT) AND digito2 = CAST(substring(cnpj_limpo, 14) AS INT) THEN
         RAISE LOG 'CNPJ VÁLIDO!';
     ELSE
         RAISE EXCEPTION 'CNPJ INVÁLIDO!';
     END IF;
 END;
-$$ LANGUAGE plpgsql;
-
-
+$$ LANGUAGE 'plpgsql';
 
 /*----------------------------------
 	VALIDAR SE É CPF OU NPJ
@@ -143,7 +144,7 @@ BEGIN
         RETURN NULL;  -- Não é CNPJ nem CPF
     END IF;
 END;
-$$ LANGUAGE plpgsql;    
+$$ LANGUAGE 'plpgsql';
 
 
 /*----------------------------
@@ -160,36 +161,39 @@ BEGIN
         RAISE EXCEPTION 'TELEFONE INVÁLIDO';
     END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE 'plpgsql';
 
 
-/*----------------------------
+
+/*---------------------------------------------------------------
 	VALIDAR EMAIL
-*/----------------------------
+*/----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION validar_email(email TEXT)
 RETURNS VOID AS $$
 BEGIN
     -- Verificar se o email tem pelo menos um @ e um ponto após o @
     IF position('@' IN email) = 0 OR position('.' IN substring(email, position('@' IN email))) = 0 THEN
-        RAISE EXCEPTION 'EMAIL INVÁLIDO'
+        RAISE EXCEPTION 'EMAIL INVÁLIDO';
     END IF;
     
     -- Verificar se o email não começa ou termina com um ponto
     IF email LIKE '.%' OR email LIKE '%.' THEN
-		RAISE EXCEPTION 'EMAIL INVÁLIDO'
+		RAISE EXCEPTION 'EMAIL INVÁLIDO';
 	END IF;
     
     -- Verificar se o email não contém espaços em branco
     IF position(' ' IN email) <> 0 THEN
-		RAISE EXCEPTION 'EMAIL INVÁLIDO'
+		RAISE EXCEPTION 'EMAIL INVÁLIDO';
 	END IF;   
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE 'plpgsql';
 
 
-/*----------------------------
+
+
+/*-----------------------------------------------------------------------
 	VALIDAR CEP
-*/----------------------------
+*/-----------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION validar_cep(cep TEXT)
 RETURNS VOID AS $$
 BEGIN
@@ -201,36 +205,122 @@ BEGIN
         RAISE EXCEPTION 'CEP INVÁLIDO';
     END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE 'plpgsql';
 
+
+/*---------------------------------------------------
+			ABATER VENDA
+	CLIENTE PODE ABATER UMA OU MAIS PARCELAS
+*/---------------------------------------------------
+CREATE OR REPLACE FUNCTION ABATER_PARCELA(NC VARCHAR(40), QUANT_ABATE INT)
+RETURNS VOID AS $$
+DECLARE
+	QUANT_FALTA INT; --QTD PARCELAS FALTANTES
+	QUANT_TOTAL INT;
+	COD_CLI INT;
+BEGIN
+	SELECT ID_CLI INTO COD_CLI FROM CLIENTE WHERE NOME_CLI = NC;
+	SELECT QTD_PARCELAS_FALTA INTO QUANT_FALTA FROM VENDA WHERE CLI_VENDA_ID = COD_CLI;
+	SELECT QTD_PARCELAS_TOTAL INTO QUANT_TOTAL FROM VENDA WHERE CLI_VENDA_ID = COD_CLI;
+	
+	IF QUANT_FALTA > QUANT_TOTAL THEN 
+		UPDATE VENDA SET QTD_PARCELAS_FALTA = QTD_PARCELAS_FALTA - QUANT_ABATE;
+	ELSIF QUANT_FALTA == 0 THEN
+		RAISE LOG 'COMPRA JÁ QUITADA';
+	ELSEIF QUANT_FALTA == QUANT_TOTAL THEN
+		UPDATE VENDA SET QTD_PARCELAS_FALTA = QTD_PARCELAS_FALTA - QUANT_ABATE; --CRIAR TRIGGER PARA NÃO DEIXAR ABATER A PONTO DE FICAR < 0
+	END IF;
+END;
+$$ LANGUAGE plpgsql;
 
 
 
 /*---------------------------------------------------
-	REALIZAR VENDA
+			REALIZAR VENDA
 */----------------------------------------------------
-CREATE OR REPLACE FUNCTION REALIZAR_VENDA(CV INT, NP VARCHAR(25), NE(15), NC(40), QV INT) --FALTAM AS PARCELAS
+SELECT * FROM REALIZAR REALIZAR_VENDA(1, 'PRODUTO A', 'EMPRESA A', 'MARIA SANTOS', 5, 2)
+SELECT * FROM EMPRESA
+SELECT * FROM ESTOQUE
+SELECT * FROM CLIENTE
+SELECT * FROM VENDA
+
+
+CREATE OR REPLACE FUNCTION REALIZAR_VENDA(
+	CV INT, -- código da venda
+	NP VARCHAR(25), -- nome do produto
+	NE VARCHAR(15), -- nome da empresa
+	NC VARCHAR(40), -- nome do cliente
+	CPF_CLI VARCHAR(15), -- CPF do cliente
+	QV INT, -- quantidade vendida
+	QUANT_PARC INT -- quantidade de parcelas
+)
 RETURNS VOID AS $$
 DECLARE 
-	QUANT_EST INTEGER; 
-	COD_PROD INT; --COD_PRO
-	COD_EMP INT; --CEO_EMP
-	COD_CLI INT; --COD_CLI
-	VU INT; --VALOR_UNI
+	QUANT_EST INT;
+	COD_PROD INT;
+	COD_EMP INT;
+	COD_CLI INT;
+	VALOR_PROD INT;
 	COD_EST INT;
 BEGIN
-	SELECT ID_PROD INTO COD_PROD FROM PRODUTO WHERE NOME_PROD=NP;
-	SELECT ID_CLI INTO COD_CLI FROM CLIENTE WHERE NOME_CLI=NC;
-	SELECT PRECO_PROD INTO VU FROM ESTOQUE WHERE PROD_ID=CP; -- IN (SELECT ID_PROD FROM PRODUTO WHERE PROD_ID = ID_PROD)
-	SELECT ID_EMP INTO COD_EMP FROM EMPRESA WHERE NOME_EMP=NE;
-	SELECT ID_ESTOQUE INTO COD_EST FROM ESTOQUE WHERE EMPID=COD_EMP AND PRODID=COD_PROD;
-	SELECT QUANT_ESTQ INTO QTDE FROM ESTOQUE WHERE ID_ESTOQUE=COD_EST;
-	
-IF (QUANT_EST>=QV) THEN 
-	IF NOT EXISTS (SELECT * FROM VENDA WHERE COD_VENDA=CV) THEN 
-		INSERT INTO VENDA VALUES(CV, COD_CLI, VU*QV, CURRENT_DATE, QV, ) --FALTA QUANTIDADE DE PARCELAS
+	PERFORM CLIENTE_EXISTE(NC, CPF_CLI); -- Verifica se o cliente existe com o nome e CPF fornecidos
+	PERFORM EMPRESA_EXISTE(NE);
+	SELECT ID_PROD INTO COD_PROD FROM PRODUTO WHERE NOME_PROD = NP;
+	SELECT ID_CLI INTO COD_CLI FROM CLIENTE WHERE NOME_CLI = NC AND CPF = CPF_CLI;
+	SELECT PRECO_PROD INTO VALOR_PROD FROM ESTOQUE WHERE PROD_ID = COD_PROD;
+	SELECT ID_EMP INTO COD_EMP FROM EMPRESA WHERE NOME_EMP = NE;
+	SELECT ID_ESTOQUE INTO COD_EST FROM ESTOQUE WHERE EMPID = COD_EMP AND PRODID = COD_PROD;
+	SELECT QUANT_ESTQ INTO QUANT_EST FROM ESTOQUE WHERE ID_ESTOQUE = COD_EST;
 
-        --LÓGICA RELATIVAMENTE PARECIDA COM A SEGUNDA QUESTÃO DA PROVA
-		
+	IF QUANT_EST >= QV THEN
+		IF NOT EXISTS (SELECT * FROM VENDA WHERE COD_VENDA = CV) THEN 
+			IF QUANT_PARC > 1 THEN
+				INSERT INTO VENDA VALUES (CV, COD_CLI, VALOR_PROD * QV, CURRENT_DATE, QV, QUANT_PARC, QUANT_PARC);
+			ELSE 
+				INSERT INTO VENDA VALUES (CV, COD_CLI, VALOR_PROD * QV, CURRENT_DATE, QV, QUANT_PARC);
+			END IF;
+			INSERT INTO ITEM_VENDA VALUES (CV, COD_EST, QV, VALOR_PROD * QV);
+			UPDATE ESTOQUE SET QUANT_ESTQ = QUANT_ESTQ - QV WHERE ID_ESTOQUE = COD_EST;
+		ELSE
+			UPDATE VENDA SET VALOR_TOTAL_VENDA = VALOR_TOTAL_VENDA + (VALOR_PROD * QV), QTD_ITENS = QTD_ITENS + QV
+			WHERE COD_VENDA = CV;
+			IF EXISTS (SELECT * FROM ITEM_VENDA WHERE VENDAID = CV AND ESTOQUEID = COD_EST) THEN 
+				UPDATE ITEM_VENDA SET QTD_VENDIDA = QTD_VENDIDA + QV,
+				VALOR_TOTAL_ITEM_V = VALOR_TOTAL_ITEM_V + (VALOR_PROD * QV);
+			ELSE 
+				INSERT INTO ITEM_VENDA VALUES (CV, COD_EST, QV, VALOR_PROD * QV);
+			END IF;
+			UPDATE ESTOQUE SET QUANT_ESTQ = QUANT_ESTQ - QV WHERE ID_ESTOQUE = COD_EST;
+		END IF;
+	END IF;	
 END;
 $$ LANGUAGE plpgsql;
+
+
+/*========================================
+		FUNÇÃO SE CLIENTE EXISTE
+*/--=======================================
+CREATE OR REPLACE FUNCTION CLIENTE_EXISTE(NC VARCHAR(40), CPF_CLI VARCHAR(15))
+RETURNS VOID AS $$
+BEGIN 
+	IF NOT EXISTS (SELECT * FROM CLIENTE WHERE LOWER(NOME_CLI) = LOWER(NC) AND CPF = CPF_CLI) THEN
+		RAISE EXCEPTION 'O CLIENTE AINDA NÃO FOI CADASTRADO';
+	END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+
+/*========================================
+		FUNÇÃO SE EMPRESA EXISTE
+*/--=======================================
+CREATE OR REPLACE FUNCTION EMPRESA_EXISTE(NE VARCHAR(15))
+RETURNS VOID
+AS $$
+BEGIN
+	IF NOT EXISTS(SELECT * FROM EMPRESA WHERE LOWER(NOME_EMP) = LOWER(NE)) THEN
+		RAISE EXCEPTION 'VOCÊ NÃO TEM ACESSO A ESSA EMPRESA';
+	END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+
