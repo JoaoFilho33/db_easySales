@@ -1,0 +1,48 @@
+--INSERIR CLIENTE   ok
+SELECT CADASTRAR_CLIENTE('John Doe', '079.586.023-40', 'Street 1', '123', 'rua200', '64380-000', 'City', 'doezin@hotmail.com', '86 995120059');
+select * from cliente
+
+--INSERIR FORNECEDOR   ok
+SELECT CADASTRAR_FORNECEDOR('Fornecedor A', 'Centro', '123', 'Rua Principal', '12345-678', 'São Paulo', '11123456789', '45.229.534/0001-22', 'fornecedorA@example.com');
+select * from fornecedor
+
+--REALIZAR COMPRA     OK?
+SELECT REALIZAR_COMPRA(1, 'Fornecedor A', 'Banana', 10, 5)--ok
+SELECT REALIZAR_COMPRA(1, 'Fornecedor A', 'Banana', 2, 5)--ok
+SELECT REALIZAR_COMPRA(1, 'Fornecedor A', 'Feijão', 5, 5)--ok
+SELECT REALIZAR_COMPRA(1, 'Fornecedor B', 'Feijão', 5, 5)--fornecedor que não existe ok
+
+select * from itemcompra
+select * from compra
+select * from estoque
+select * from produto
+
+--REALIZAR VENDA    OK
+SELECT REALIZAR_VENDA(1, 'Banana', '079.586.023-40', 5, 1)
+SELECT REALIZAR_VENDA(1, 'Banana', '079.586.023-40', 4, 1)
+
+SELECT REALIZAR_VENDA(2, 'Banana', '079.586.023-40', 5, 2)
+SELECT REALIZAR_VENDA(3, 'Feijão', '079.586.023-40', 4, 1)
+SELECT REALIZAR_VENDA(4, 'Feijão', '079.586.023-40', 2, 2)
+
+select * from venda
+select * from itemvenda
+select * from estoque
+
+--ABATER VENDA   OK
+SELECT ABATER_PARCELA(4, 2) --OK
+
+
+
+--UPDATE
+SELECT update_quantidade_itens_venda(1, 6, 2)
+
+--DELETE 
+SELECT apagar_venda(4)  -- ok
+
+
+
+
+
+
+

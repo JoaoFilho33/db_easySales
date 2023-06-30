@@ -1,0 +1,89 @@
+CREATE OR REPLACE FUNCTION realizar_compra(
+	cod_compra INT,
+  	nome_fornecedor VARCHAR(40),
+	nome_produto VARCHAR(25),
+    quantidade INT,
+    preco_unitario FLOAT
+) RETURNS VOID AS $$
+DECLARE
+    COD_FORN INT;
+    COD_EMP INT;
+    COD_PROD INT;
+    COD_ESTOQUE INT;
+	CPF_FORN VARCHAR(18);
+BEGIN
+    -- Obter o ID do fornecedor com base no nome
+    SELECT id_fn INTO COD_FORN FROM Fornecedor WHERE nome_fn = nome_fornecedor;
+    -- Obter o ID da empresa com base no current user
+    SELECT id_emp INTO COD_EMP FROM Empresa WHERE nome_emp = current_user;
+	SELECT CPF_FN INTO CPF_FORN FROM FORNECEDOR WHERE NOME_FN = NOME_FORNECEDOR;
+	SELECT id_prod INTO COD_PROD FROM Produto WHERE nome_prod = nome_produto;
+	SELECT id_estoque INTO COD_ESTOQUE FROM Estoque WHERE empId = COD_EMP AND prodId = COD_PROD;
+	
+	IF VERIFICAR_FORNECEDOR_EMPRESA(CPF_FORN, COD_EMP) THEN
+		IF PRODUTO_EXISTE(nome_produto) THEN
+			IF PRODUTO_EXISTE_NA_EMPRESA(COD_PROD, COD_EMP) THEN -- SE O PRODUTO JÁ EXISTE, A EMPRESA SÓ ESTÁ REPONDO
+				IF COMPRA_EXISTE(cod_compra) THEN
+					UPDATE Compra SET valor_total_compra = valor_total_compra + (quantidade * preco_unitario)
+						WHERE id_compra = cod_compra;
+					IF ITEM_COMPRA_EXISTE(cod_compra, COD_ESTOQUE) THEN
+						UPDATE ItemCompra SET qtdComprada = qtdComprada + quantidade, 
+							valor_total_item_c = valor_total_item_c + (quantidade * preco_unitario)
+							WHERE compraId = cod_compra AND estoqueId = COD_ESTOQUE;
+					ELSE
+						INSERT INTO ItemCompra VALUES(cod_compra, COD_ESTOQUE, quantidade, quantidade * preco_unitario, preco_unitario);
+					END IF;
+					UPDATE Estoque SET quant_estq = quant_estq + quantidade WHERE empId = COD_EMP AND prodId = COD_PROD;
+				ELSE 
+					INSERT INTO Compra VALUES(cod_compra, COD_FORN, CURRENT_TIMESTAMP, quantidade * preco_unitario);
+					INSERT INTO ItemCompra VALUES(cod_compra, COD_ESTOQUE, quantidade, quantidade * preco_unitario, preco_unitario);
+					UPDATE Estoque SET quant_estq = quant_estq + quantidade WHERE empId = COD_EMP AND prodId = COD_PROD;
+				END IF;
+			ELSE -- SE O PRODUTO NÃO EXISTE NA EMPRESA
+				INSERT INTO Produto (nome_prod) VALUES (nome_produto);
+				SELECT id_prod INTO COD_PROD FROM Produto WHERE nome_prod = nome_produto;
+				INSERT INTO Estoque VALUES (DEFAULT, COD_EMP, COD_PROD, preco_unitario, quantidade); -- CADASTRANDO PRODUTO NA EMPRESA
+					SELECT id_estoque INTO COD_ESTOQUE FROM Estoque WHERE empId = COD_EMP AND prodId = COD_PROD;
+
+				IF COMPRA_EXISTE(cod_compra) THEN
+					UPDATE Compra SET valor_total_compra = valor_total_compra + (quantidade * preco_unitario)
+						WHERE id_compra = cod_compra;
+					IF ITEM_COMPRA_EXISTE(cod_compra, COD_ESTOQUE) THEN
+						UPDATE ItemCompra SET qtdComprada = qtdComprada + quantidade, 
+							valor_total_item_c = valor_total_item_c + (quantidade * preco_unitario)
+							WHERE compraId = cod_compra AND estoqueId = COD_ESTOQUE;
+					ELSE
+						INSERT INTO ItemCompra VALUES(cod_compra, COD_ESTOQUE, quantidade, quantidade * preco_unitario, preco_unitario);
+					END IF;
+				ELSE 
+					INSERT INTO Compra VALUES(cod_compra, COD_FORN, CURRENT_TIMESTAMP, quantidade * preco_unitario);
+					INSERT INTO ItemCompra VALUES(cod_compra, COD_ESTOQUE, quantidade, quantidade * preco_unitario, preco_unitario);
+				END IF;
+			END IF;
+		ELSE -- SE O PRODUTO NÃO EXISTE NA TABELA PRODUTO
+			INSERT INTO Produto (nome_prod) VALUES (nome_produto);
+			SELECT id_prod INTO COD_PROD FROM Produto WHERE nome_prod = nome_produto;
+			INSERT INTO Estoque VALUES (DEFAULT, COD_EMP, COD_PROD, preco_unitario, quantidade); -- CADASTRANDO PRODUTO NA EMPRESA
+					SELECT id_estoque INTO COD_ESTOQUE FROM Estoque WHERE empId = COD_EMP AND prodId = COD_PROD;
+
+			IF COMPRA_EXISTE(cod_compra) THEN
+				UPDATE Compra SET valor_total_compra = valor_total_compra + (quantidade * preco_unitario)
+					WHERE id_compra = cod_compra;
+				IF ITEM_COMPRA_EXISTE(cod_compra, COD_ESTOQUE) THEN
+					UPDATE ItemCompra SET qtdComprada = qtdComprada + quantidade, 
+						valor_total_item_c = valor_total_item_c + (quantidade * preco_unitario)
+						WHERE compraId = cod_compra AND estoqueId = COD_ESTOQUE;
+				ELSE
+					INSERT INTO ItemCompra VALUES(cod_compra, COD_ESTOQUE, quantidade, quantidade * preco_unitario, preco_unitario);
+				END IF;
+				UPDATE Estoque SET quant_estq = quant_estq + quantidade WHERE empId = COD_EMP AND prodId = COD_PROD;
+			ELSE 
+				INSERT INTO Compra VALUES(cod_compra, COD_FORN, CURRENT_TIMESTAMP, quantidade * preco_unitario);
+				INSERT INTO ItemCompra VALUES(cod_compra, COD_ESTOQUE, quantidade, quantidade * preco_unitario, preco_unitario);
+			END IF;
+		END IF;
+	else
+		RAISE EXCEPTION 'FORNECEDOR NÃO CADASTRADO!';
+	END IF;
+END;
+$$ LANGUAGE plpgsql;
