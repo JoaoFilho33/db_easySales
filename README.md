@@ -33,5 +33,3 @@
 	$$
 	LANGUAGE 'plpgsql';
 ```
-
-- Para testar, certifique-se de ter o PostgreSQL instalado na sua máquina, e um ambiente preparado para criar as tabelas.
