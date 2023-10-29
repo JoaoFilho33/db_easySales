@@ -2,7 +2,7 @@
 
 - O banco funciona de forma independente da plataforma. Nele você pode testar todas as funcionalidades do sistema de forma manual.
 - Podem ser criados diversos usuários (empresa) como uma forma de login com a função abaixo:
-- 
+
   ```sql
   CREATE OR REPLACE FUNCTION CADASTRAR_EMPRESA(
     nome_emp VARCHAR(15),
@@ -33,3 +33,5 @@
 	$$
 	LANGUAGE 'plpgsql';
 ```
+
+- Para testar, certifique-se de ter o PostgreSQL instalado na sua máquina, e um ambiente preparado para criar as tabelas.
